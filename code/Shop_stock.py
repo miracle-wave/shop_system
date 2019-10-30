@@ -1,26 +1,29 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import sys
-import pyodbc
+import pymysql
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 
-
 class Shopstock(QWidget):
     '''
-    进货录入系统（Shopstock）：
-    将进货信息依次按照顺序进行录入；设计时需要注意以下几项：
-    1、输入框应该规范，位置排列应当整齐
+    进货录入系统(Shopstock):
+    将进货信息依次按照顺寻进行录入; 设计时需要注意以下几项:
+    1. 输入框应该规范, 位置排列应当整齐;
     2、每个输入框需要输入的数据类型都有严格的规定，所以应该注意设置每个输入框的输入类型
-    3、条形码和采购数量应该为整形，进价和零售价应该为浮点型
+    3、条形码和采购数量应该为整型，进价和零售价应该为浮点型
     4、日期应该特别注意，要设置日期输入样式示例，还要检查日期输入是否正确，月份（1，12），
-         日期（1，31）还应考虑是否是闰年
+        日期（1，31）还应考虑是否是闰年
     5、点击录入时应该首先将整个录入信息显示在显示框内，管理员再次确认无误后才能确定录入，
-         如果录入信息出现错误应该选择清除当前录入的信息条
+        如果录入信息出现错误应该选择清除当前录入的信息条, 考虑到用户体验, 还会为已存在
+        的商品添加部分录入信息自动补全的功能
     '''
     def __init__(self):
         super(Shopstock, self).__init__()
         self.initUI()
-    #UI设计
+        #UI界面设计
     def initUI(self):
         self.setGeometry(60, 60, 800, 600)
         self.label_stock_title = QLabel()
@@ -48,7 +51,6 @@ class Shopstock(QWidget):
         self.label7.setFixedSize(60, 40)
         self.label8.setFixedSize(60, 40)
         self.label9.setFixedSize(60, 40)
-
         #定义多个空列表用于暂存录入的信息
         self.txm = []
         self.spmc = []
@@ -238,33 +240,38 @@ class Shopstock(QWidget):
             self.lineEdit8.clear()
     #将信息存入数据库
     def event_ok(self):
-        #首先连接数据库并建立cursor
-        conn = pyodbc.connect(r"DRIVER={SQL Server Native Client 10.0};SERVER=192.168.43.220,1433;DATABASE=Supermarket;UID=sa;PWD=Vv86865211")
-        cursor = conn.cursor()
-        #依次向数据库中插入数据
+        # 先连接数据库并建立cursor
+        conn = pymysql.connect(host="127.0.0.1", user="qjb", passwd="123456", database="shop_system")
+        cur = conn.cursor()
+        # 依次向数据库中插入数据
         lenth = len(self.txm)
         i = 0
-        while(i<lenth):
-            cursor.execute("insert into Stock values(%d,%f,%d,%r)"%(self.txm[i], self.jj[i], self.cgsl[i], self.cgrq[i]))
-            #给库存表添加信息时应注意表中是否已经有了该商品的一些信息
-            cursor.execute("select intxm from Inventory")
-            rows = cursor.fetchall()
+        while i < lenth:
+            sql = "insert into Stock (txm, jj, cgsl, cgrq) values (%s, %s, %s, %s)"
+            val = self.txm[i], self.jj[i], self.cgsl[i], self.cgrq[i]
+            cur.execute(sql, val)
+            #给库存表中添加信息时应注意表中是否已经有了该商品的部分信息
+            cur.execute("select txm from Inventory")
+            rows = cur.fetchall()
+            #获取到的类型为二维元组
             r = []
             for k in range(len(rows)):
-                r.append(rows[k].intxm)
-            if rows !=None and self.txm[i] in r:
-                cursor.execute("select kcl from Inventory where intxm=%d"%self.txm[i])
-                cgsl_old = cursor.fetchone()
-                cursor.execute("update Inventory set kcl=%d where intxm = %d"%(cgsl_old[0]+self.cgsl[i], self.txm[i]))
-            else :
-                cursor.execute("insert into Inventory values(%d,%r,%d,%r,%r,%f)"%(self.txm[i], self.spmc[i], self.cgsl[i], self.sccs[i], self.spgg[i], self.lsj[i]))
-            i +=1
+                r.append(rows[k][0])
+            if rows != None and self.txm[i] in r:
+                cur.execute("select kcl from Inventory where txm=%d" % self.txm[i])
+                cgsl_old = cur.fetchone()
+                cur.execute("update Inventory set kcl=%d where txm=%d" % (cgsl_old[0] + self.cgsl[i], self.txm[i]))
+            else:
+                sql = "insert into Inventory (txm, spmc, sccs, spgg, lsj, kcl) values (%s, %s, %s, %s, %s, %s)"
+                val = self.txm[i], self.spmc[i], self.sccs[i], self.spgg[i], self.lsj[i], self.cgsl[i]
+                cur.execute(sql, val)
+            i += 1
         conn.commit()
         conn.close()
         self.event_eliminate()
     #清除信息
     def event_eliminate(self):
-        #首先清除显示框内的录入信息
+        #首先清楚显示框内的录入信息
         self.textEdit.clear()
         #再依次将信息list清零
         self.txm=[]
@@ -274,35 +281,35 @@ class Shopstock(QWidget):
         self.jj=[]
         self.lsj=[]
         self.cgsl=[]
-        self.cgrq=[]
+        self.cgrq=[] 
     #自动补全
     def buquan(self):
-        conn = pyodbc.connect(r"DRIVER={SQL Server Native Client 10.0};SERVER=192.168.43.220,1433;DATABASE=Supermarket;UID=sa;PWD=Vv86865211")
-        cursor = conn.cursor()
-        cursor.execute("select sttxm from Stock")
-        row = cursor.fetchall()
+        conn = pymysql.connect("127.0.0.1", "qjb", "123456", "shop_system")
+        cur = conn.cursor()
+        cur.execute("select txm from Stock")
+        row = cur.fetchall()
         #判断条形码是否为空
-        if self.lineEdit1.text() != '':
+        if self.lineEdit1.text() != "":
             txm = int(self.lineEdit1.text())
         else:
             txm = 0
             #判断条形码是否已经在表中出现
         r = []
         for i in range(len(row)):
-            r.append(row[i].sttxm)
-        if row !=None and txm in r:
+            r.append(row[i][0])
+        if row != None and txm in r:
             self.lineEdit2.setReadOnly(True)
             self.lineEdit3.setReadOnly(True)
             self.lineEdit4.setReadOnly(True)
             self.lineEdit5.setReadOnly(True)
             self.lineEdit6.setReadOnly(True)
-            cursor.execute("select Stock.jj,spmc,sccs,spgg,lsj from Stock,Inventory where sttxm=%d and Stock.sttxm=Inventory.intxm"%txm)
-            rows = cursor.fetchone()
+            cur.execute("select spmc, sccs, spgg, jj, lsj from Stock st, Invntory in where st.txm=in.txm and st.txm=%d" % txm)
+            rows = cur.fetchone()
+            self.lineEdit2.setText(str(rows[0].rstrip()))
             self.lineEdit2.setText(str(rows[1].rstrip()))
-            self.lineEdit3.setText(str(rows[2].rstrip()))
-            self.lineEdit4.setText(str(rows[3].rstrip()))
-            self.lineEdit5.setText(str(rows[0]))
-            self.lineEdit6.setText(str(rows[4]))
+            self.lineEdit2.setText(str(rows[2].rstrip()))
+            self.lineEdit2.setText(str(rows[3]))
+            self.lineEdit2.setText(str(rows[0]))
             conn.close()
         else:
             self.lineEdit2.setText("")
@@ -324,4 +331,3 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     w = Shopstock()
     sys.exit(app.exec())
-        

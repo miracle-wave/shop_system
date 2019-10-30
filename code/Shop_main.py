@@ -1,33 +1,37 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import sys
+import pymysql
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from Shop_stock import *
 from Shop_sell import *
 from Shop_select import *
+
 class Shopmain(QWidget):
-    """
-    成功登录后的主窗口：Shop_main
-    窗口设置title："超市信息管理系统",放置三个按钮："进货录入"、"售货录入"、"信息查询"
-    添加一个显示标签：关于本系统
-    三个按钮分别连接三个类，点击则实例化
-    显示标签按照常理应当连接到网页用以详细介绍系统，此程序选择不使用，直接pass掉
-    """
+    '''
+    成功登陆后的主窗口: Shop_main
+    窗口设置title: "超市信息管理系统", 放置三个按钮:"进货录入", "售货录入", "信息查询"
+    添加一个显示标签: 关于本系统
+    三个按钮分别连接三个类, 点击则实例化
+    '''
     def __init__(self, parent=None):
         super(Shopmain, self).__init__(parent)
         self.initUI()
         #UI窗口设计
     def initUI(self):
-        self.resize(1366,768)
-        #self.setGeometry(50, 50, 800, 600)
+        self.resize(1366, 768)
+        #self.setGeometry(50, 50)
         #标题
         self.setWindowTitle("超市信息管理系统")
-        #三个子系统选择按钮，绑定信号事件
+        #三个子系统选择按钮, 绑定信号事件
         btn_main_stock = QPushButton("进货录入")
         btn_main_stock.setStyleSheet("background-color :rgb(253,216,174)")
         btn_main_stock.setFixedSize(200, 45)
         btn_main_stock.clicked.connect(self.stock)
-        btn_main_sell= QPushButton("售货录入")
+        btn_main_sell = QPushButton("售货录入")
         btn_main_sell.setFixedSize(200, 45)
         btn_main_sell.setStyleSheet("background-color :rgb(253,216,174)")
         btn_main_sell.clicked.connect(self.sell)
@@ -84,8 +88,9 @@ class Shopmain(QWidget):
         painter = QPainter(self)
         pixmap = QPixmap("main.jpg")
         painter.drawPixmap(self.rect(), pixmap)
+
 if __name__ == "__main__":
-    app =QApplication(sys.argv)
+    app = QApplication(sys.argv)
     shop = Shopmain()
     shop.show()
     sys.exit(app.exec())
